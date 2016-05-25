@@ -1,8 +1,17 @@
 <resources>
     <string name="app_name">Udacity</string>
 
-    <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="action_settings">Settings</string>
     <string name="refresh">refresh</string>
+    <string name="hello_world">helloWorld</string>
+    <string name="pref_location_key">location</string>
+    <string name="pref_location_label">Location</string>
+    <string name="pref_location_summary">what weather are you interested in</string>
+    <string name="pref_location_default">94043</string>
+    <string name="title_list_preference">temperature</string>
+    <string name="summary_list_preference">summery</string>
+    <string name="dialog_title_list_preference">Chose your tempirature style</string>
+    <string name="pref_temperature_key">list_preference</string>
+    <string name="pref_temperature_default">metric</string>
 </resources>

@@ -1,9 +1,12 @@
 package ru.alfabank.udacity;
 
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.text.format.Time;
 import android.util.Log;
@@ -13,6 +16,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
@@ -28,9 +32,6 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 
 /**
@@ -46,6 +47,7 @@ public class ForecastFragment extends Fragment {
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
+    public static final String EXTRA_DATA = "EXTRA_DATA";
 
     // TODO:    Rename and change types of parameters
     private String mParam1;
@@ -89,19 +91,19 @@ public class ForecastFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
-        String[] fakeData = {
-                "Today - sunny - 88/63",
-                "Today - sunny - 88/63",
-                "Today - sunny - 88/63",
-                "Today - sunny - 88/63"};
-        List<String> fakeForecast = new ArrayList<>(Arrays.asList(fakeData));
-
-        forecastAdapter = new ArrayAdapter<>(getActivity(), R.layout.list_item_forecast, R.id.list_item_forecast_textview, fakeForecast);
+        forecastAdapter = new ArrayAdapter<String>(getActivity(), R.layout.list_item_forecast, R.id.list_item_forecast_textview);
         View rootView = inflater.inflate(R.layout.fragment_blank, container, false);
         ListView list = (ListView) rootView.findViewById(R.id.listview_forecast);
         list.setAdapter(forecastAdapter);
-
+        list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+//                Toast.makeText(getActivity(), forecastAdapter.getItem(position), Toast.LENGTH_SHORT).show();
+                Intent myIntent = new Intent(getContext().getApplicationContext(), DetailActivity.class);
+                myIntent.putExtra(EXTRA_DATA, forecastAdapter.getItem(position));
+                startActivity(myIntent);
+            }
+        });
         return rootView;
     }
 
@@ -126,11 +128,23 @@ public class ForecastFragment extends Fragment {
         int id = item.getItemId();
         if (id == R.id.action_refresh) {
             Toast.makeText(getActivity(), "refresh", Toast.LENGTH_SHORT).show();
-            FetchWeatherTask task = new FetchWeatherTask();
-            task.execute("94043");
+            refreshForecast();
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        refreshForecast();
+    }
+
+    private void refreshForecast() {
+        FetchWeatherTask task = new FetchWeatherTask();
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        String locationFromPreferences = prefs.getString(getResources().getString(R.string.pref_location_key), getResources().getString(R.string.pref_location_default));
+        task.execute(locationFromPreferences);
     }
 
     @Override
@@ -255,12 +269,11 @@ public class ForecastFragment extends Fragment {
                     }
                 }
             }
-            Log.d(TAG, String.format("doInBackground: %s", forecastJsonStr));
             String[] resultSet = null;
             try {
                 resultSet = getWeatherDataFromJson(forecastJsonStr, numDays);
             } catch (JSONException e) {
-                Log.d(TAG, "doInBackground: ", e);
+                Log.w(TAG, "doInBackground: ", e);
             }
             return resultSet;
         }
@@ -353,15 +366,28 @@ public class ForecastFragment extends Fragment {
                 double high = temperatureObject.getDouble(OWM_MAX);
                 double low = temperatureObject.getDouble(OWM_MIN);
 
+                String userTemperature = PreferenceManager.getDefaultSharedPreferences(getActivity()).getString(getResources().getString(R.string.pref_temperature_key), getResources().getString(R.string.pref_temperature_default));
+                if (userTemperature.equals("imperial")) {
+                    high = toFahrenheit(high);
+                    low = toFahrenheit(low);
+                }
                 highAndLow = formatHighLows(high, low);
                 resultStrs[i] = day + " - " + description + " - " + highAndLow;
-            }
-
-            for (String s : resultStrs) {
-                Log.v(TAG, "Forecast entry: " + s);
             }
             return resultStrs;
 
         }
+
+        @Override
+        protected void onPostExecute(String[] strings) {
+            if (strings != null) {
+                forecastAdapter.clear();
+                forecastAdapter.addAll(strings);
+            }
+        }
+    }
+    
+    public double toFahrenheit(double temperature) {
+        return temperature = ((temperature - 32)*5)/9;
     }
 }
