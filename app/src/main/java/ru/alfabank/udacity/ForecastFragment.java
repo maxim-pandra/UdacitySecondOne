@@ -265,7 +265,7 @@ public class ForecastFragment extends Fragment {
                     try {
                         reader.close();
                     } catch (final IOException e) {
-                        Log.e("PlaceholderFragment", "Error closing stream", e);
+                        Log.e("DetailFragment", "Error closing stream", e);
                     }
                 }
             }
@@ -292,6 +292,12 @@ public class ForecastFragment extends Fragment {
          * Prepare the weather high/lows for presentation.
          */
         private String formatHighLows(double high, double low) {
+            String userTemperature = PreferenceManager.getDefaultSharedPreferences(getActivity()).getString(getResources().getString(R.string.pref_temperature_key), getResources().getString(R.string.pref_temperature_default));
+            if (userTemperature.equals(getString(R.string.unit_value_imperial))) {
+                high = toFahrenheit(high);
+                low = toFahrenheit(low);
+            }
+
             // For presentation, assume the user doesn't care about tenths of a degree.
             long roundedHigh = Math.round(high);
             long roundedLow = Math.round(low);
@@ -366,11 +372,6 @@ public class ForecastFragment extends Fragment {
                 double high = temperatureObject.getDouble(OWM_MAX);
                 double low = temperatureObject.getDouble(OWM_MIN);
 
-                String userTemperature = PreferenceManager.getDefaultSharedPreferences(getActivity()).getString(getResources().getString(R.string.pref_temperature_key), getResources().getString(R.string.pref_temperature_default));
-                if (userTemperature.equals("imperial")) {
-                    high = toFahrenheit(high);
-                    low = toFahrenheit(low);
-                }
                 highAndLow = formatHighLows(high, low);
                 resultStrs[i] = day + " - " + description + " - " + highAndLow;
             }

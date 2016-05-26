@@ -14,4 +14,8 @@
     <string name="dialog_title_list_preference">Chose your tempirature style</string>
     <string name="pref_temperature_key">list_preference</string>
     <string name="pref_temperature_default">metric</string>
+    <string name="unit_value_imperial">imperial</string>
+    <string name="unit_value_metric">metric</string>
+    <string name="action_view_location">show on map</string>
+    <string name="menu_item_share">Share</string>
 </resources>
