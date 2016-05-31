@@ -1,24 +1,25 @@
 package ru.alfabank.udacity;
 
 import android.content.Context;
-import android.content.Intent;
-import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
+import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.CursorLoader;
+import android.support.v4.content.Loader;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
 
 import ru.alfabank.udacity.data.FetchWeatherTask;
+import ru.alfabank.udacity.data.WeatherContract;
 
 
 /**
@@ -29,11 +30,12 @@ import ru.alfabank.udacity.data.FetchWeatherTask;
  * Use the {@link ForecastFragment#newInstance} factory method to
  * create an instance of this fragment.
  */
-public class ForecastFragment extends Fragment {
+public class ForecastFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor> {
     // TODO: Rename parameter arguments, choose names that match
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
+    private static final int LOADER_ID = 1;
     public static final String EXTRA_DATA = "EXTRA_DATA";
 
     // TODO:    Rename and change types of parameters
@@ -41,7 +43,7 @@ public class ForecastFragment extends Fragment {
     private String mParam2;
 
     private OnFragmentInteractionListener mListener;
-    private ArrayAdapter<String> forecastAdapter;
+    private ForecastAdapter forecastAdapter;
 
     public ForecastFragment() {
         // Required empty public constructor
@@ -76,21 +78,28 @@ public class ForecastFragment extends Fragment {
     }
 
     @Override
+    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
+        getLoaderManager().initLoader(LOADER_ID, null, this);
+        super.onActivityCreated(savedInstanceState);
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        forecastAdapter = new ArrayAdapter<String>(getActivity(), R.layout.list_item_forecast, R.id.list_item_forecast_textview);
+
+        forecastAdapter = new ForecastAdapter(getActivity(), null, 0);
         View rootView = inflater.inflate(R.layout.fragment_blank, container, false);
         ListView list = (ListView) rootView.findViewById(R.id.listview_forecast);
         list.setAdapter(forecastAdapter);
-        list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-//                Toast.makeText(getActivity(), forecastAdapter.getItem(position), Toast.LENGTH_SHORT).show();
-                Intent myIntent = new Intent(getContext().getApplicationContext(), DetailActivity.class);
-                myIntent.putExtra(EXTRA_DATA, forecastAdapter.getItem(position));
-                startActivity(myIntent);
-            }
-        });
+//        list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+//            @Override
+//            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+////                Toast.makeText(getActivity(), forecastAdapter.getItem(position), Toast.LENGTH_SHORT).show();
+//                Intent myIntent = new Intent(getContext().getApplicationContext(), DetailActivity.class);
+//                myIntent.putExtra(EXTRA_DATA, forecastAdapter.getItem(position));
+//                startActivity(myIntent);
+//            }
+//        });
         return rootView;
     }
 
@@ -128,9 +137,8 @@ public class ForecastFragment extends Fragment {
     }
 
     private void refreshForecast() {
-        FetchWeatherTask task = new FetchWeatherTask(getActivity(), forecastAdapter);
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
-        String locationFromPreferences = prefs.getString(getResources().getString(R.string.pref_location_key), getResources().getString(R.string.pref_location_default));
+        FetchWeatherTask task = new FetchWeatherTask(getActivity());
+        String locationFromPreferences = Utility.getPreferredLocation(getActivity());
         task.execute(locationFromPreferences);
     }
 
@@ -151,6 +159,33 @@ public class ForecastFragment extends Fragment {
         mListener = null;
     }
 
+    @Override
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+        String locationSetting = Utility.getPreferredLocation(getActivity());
+
+        // Sort order:  Ascending, by date.
+        String sortOrder = WeatherContract.WeatherEntry.COLUMN_DATE + " ASC";
+        Uri weatherForLocationUri = WeatherContract.WeatherEntry.buildWeatherLocationWithStartDate(
+                locationSetting, System.currentTimeMillis());
+
+        return new CursorLoader(getActivity(),
+                weatherForLocationUri,
+                null,
+                null,
+                null,
+                sortOrder);
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+        forecastAdapter.swapCursor(data);
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {
+        forecastAdapter.swapCursor(null);
+    }
+
     /**
      * This interface must be implemented by activities that contain this
      * fragment to allow an interaction in this fragment to be communicated
@@ -166,8 +201,4 @@ public class ForecastFragment extends Fragment {
         void onFragmentInteraction(Uri uri);
     }
 
-    
-    public double toFahrenheit(double temperature) {
-        return temperature = ((temperature - 32)*5)/9;
-    }
 }
