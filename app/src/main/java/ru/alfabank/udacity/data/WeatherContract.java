@@ -75,7 +75,7 @@ public class WeatherContract {
             return ContentUris.withAppendedId(CONTENT_URI, id);
         }
 
-    }
+        }
 
     /* Inner class that defines the table contents of the weather table */
     public static final class WeatherEntry implements BaseColumns {

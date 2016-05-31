@@ -17,9 +17,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".DetailActivity"/>
-        <activity android:name=".SettingsActivity"
-            android:parentActivityName=".MainActivity"/>
+        <activity android:name=".DetailActivity" />
+        <activity
+            android:name=".SettingsActivity"
+            android:parentActivityName=".MainActivity" />
+
+        <provider
+            android:name=".data.WeatherProvider"
+            android:authorities="ru.alfabank.udacity"
+            android:exported="false"/>
     </application>
 
 </manifest>
