@@ -1,6 +1,7 @@
 package ru.alfabank.udacity;
 
 import android.content.Context;
+import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -15,6 +16,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.Toast;
 
@@ -31,19 +33,41 @@ import ru.alfabank.udacity.data.WeatherContract;
  * create an instance of this fragment.
  */
 public class ForecastFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor> {
-    // TODO: Rename parameter arguments, choose names that match
-    // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-    private static final String ARG_PARAM1 = "param1";
-    private static final String ARG_PARAM2 = "param2";
     private static final int LOADER_ID = 1;
     public static final String EXTRA_DATA = "EXTRA_DATA";
 
-    // TODO:    Rename and change types of parameters
-    private String mParam1;
-    private String mParam2;
-
     private OnFragmentInteractionListener mListener;
     private ForecastAdapter forecastAdapter;
+
+    private static final String[] FORECAST_COLUMNS = {
+            // In this case the id needs to be fully qualified with a table name, since
+            // the content provider joins the location & weather tables in the background
+            // (both have an _id column)
+            // On the one hand, that's annoying.  On the other, you can search the weather table
+            // using the location set by the user, which is only in the Location table.
+            // So the convenience is worth it.
+            WeatherContract.WeatherEntry.TABLE_NAME + "." + WeatherContract.WeatherEntry._ID,
+            WeatherContract.WeatherEntry.COLUMN_DATE,
+            WeatherContract.WeatherEntry.COLUMN_SHORT_DESC,
+            WeatherContract.WeatherEntry.COLUMN_MAX_TEMP,
+            WeatherContract.WeatherEntry.COLUMN_MIN_TEMP,
+            WeatherContract.LocationEntry.COLUMN_LOCATION_SETTING,
+            WeatherContract.WeatherEntry.COLUMN_WEATHER_ID,
+            WeatherContract.LocationEntry.COLUMN_COORD_LAT,
+            WeatherContract.LocationEntry.COLUMN_COORD_LONG
+    };
+
+    // These indices are tied to FORECAST_COLUMNS.  If FORECAST_COLUMNS changes, these
+    // must change.
+    static final int COL_WEATHER_ID = 0;
+    static final int COL_WEATHER_DATE = 1;
+    static final int COL_WEATHER_DESC = 2;
+    static final int COL_WEATHER_MAX_TEMP = 3;
+    static final int COL_WEATHER_MIN_TEMP = 4;
+    static final int COL_LOCATION_SETTING = 5;
+    static final int COL_WEATHER_CONDITION_ID = 6;
+    static final int COL_COORD_LAT = 7;
+    static final int COL_COORD_LONG = 8;
 
     public ForecastFragment() {
         // Required empty public constructor
@@ -53,27 +77,18 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
      * Use this factory method to create a new instance of
      * this fragment using the provided parameters.
      *
-     * @param param1 Parameter 1.
-     * @param param2 Parameter 2.
      * @return A new instance of fragment ForecastFragment.
      */
+
     // TODO: Rename and change types and number of parameters
-    public static ForecastFragment newInstance(String param1, String param2) {
+    public static ForecastFragment newInstance() {
         ForecastFragment fragment = new ForecastFragment();
-        Bundle args = new Bundle();
-        args.putString(ARG_PARAM1, param1);
-        args.putString(ARG_PARAM2, param2);
-        fragment.setArguments(args);
         return fragment;
     }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (getArguments() != null) {
-            mParam1 = getArguments().getString(ARG_PARAM1);
-            mParam2 = getArguments().getString(ARG_PARAM2);
-        }
         setHasOptionsMenu(true);
     }
 
@@ -91,15 +106,22 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
         View rootView = inflater.inflate(R.layout.fragment_blank, container, false);
         ListView list = (ListView) rootView.findViewById(R.id.listview_forecast);
         list.setAdapter(forecastAdapter);
-//        list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-//            @Override
-//            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-////                Toast.makeText(getActivity(), forecastAdapter.getItem(position), Toast.LENGTH_SHORT).show();
-//                Intent myIntent = new Intent(getContext().getApplicationContext(), DetailActivity.class);
-//                myIntent.putExtra(EXTRA_DATA, forecastAdapter.getItem(position));
-//                startActivity(myIntent);
-//            }
-//        });
+        list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView adapterView, View view, int position, long l) {
+                // CursorAdapter returns a cursor at the correct position for getItem(), or null
+                // if it cannot seek to that position.
+                Cursor cursor = (Cursor) adapterView.getItemAtPosition(position);
+                if (cursor != null) {
+                    String locationSetting = Utility.getPreferredLocation(getActivity());
+                    Intent intent = new Intent(getActivity(), DetailActivity.class)
+                            .setData(WeatherContract.WeatherEntry.buildWeatherLocationWithDate(
+                                    locationSetting, cursor.getLong(COL_WEATHER_DATE)
+                            ));
+                    startActivity(intent);
+                }
+            }
+        });
         return rootView;
     }
 
@@ -128,12 +150,6 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
             return true;
         }
         return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public void onStart() {
-        super.onStart();
-        refreshForecast();
     }
 
     private void refreshForecast() {
@@ -170,7 +186,7 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
 
         return new CursorLoader(getActivity(),
                 weatherForLocationUri,
-                null,
+                FORECAST_COLUMNS,
                 null,
                 null,
                 sortOrder);
@@ -186,6 +202,11 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
         forecastAdapter.swapCursor(null);
     }
 
+
+    public void onLocationChanged() {
+        refreshForecast();
+        getLoaderManager().restartLoader(LOADER_ID, null, this);
+    }
     /**
      * This interface must be implemented by activities that contain this
      * fragment to allow an interaction in this fragment to be communicated

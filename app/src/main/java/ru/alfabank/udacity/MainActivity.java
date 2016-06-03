@@ -7,8 +7,10 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 
-public class MainActivity extends AppCompatActivity implements ForecastFragment.OnFragmentInteractionListener{
+public class MainActivity extends AppCompatActivity implements ForecastFragment.OnFragmentInteractionListener {
 
+    String mLocation;
+    String FORECASTFRAGMENT_TAG = "FORECASTFRAGMENT_TAG";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -16,8 +18,22 @@ public class MainActivity extends AppCompatActivity implements ForecastFragment.
         setContentView(R.layout.activity_main);
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
-                    .add(R.id.container, ForecastFragment.newInstance("1","2"))
+                    .add(R.id.container, ForecastFragment.newInstance(), FORECASTFRAGMENT_TAG)
                     .commit();
+        }
+        mLocation = Utility.getPreferredLocation(this);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        String location = Utility.getPreferredLocation(this);
+        if (location != null && !location.equals(mLocation)) {
+            ForecastFragment ff = (ForecastFragment) getSupportFragmentManager().findFragmentByTag(FORECASTFRAGMENT_TAG);
+            if (ff != null) {
+                ff.onLocationChanged();
+            }
+            mLocation = location;
         }
     }
 
