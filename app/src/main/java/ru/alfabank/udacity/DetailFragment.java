@@ -1,4 +1,4 @@
-package ru.alfabank.udacity.utils;
+package ru.alfabank.udacity;
 
 /**
  * Created by Maxim Turaev on 03.06.2016.
@@ -6,6 +6,7 @@ package ru.alfabank.udacity.utils;
 
 import android.content.Intent;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -14,6 +15,7 @@ import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v7.widget.ShareActionProvider;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -23,8 +25,6 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import ru.alfabank.udacity.R;
-import ru.alfabank.udacity.Utility;
 import ru.alfabank.udacity.data.WeatherContract;
 
 /**
@@ -33,6 +33,7 @@ import ru.alfabank.udacity.data.WeatherContract;
 public class DetailFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor> {
     private static final String FORECAST_SHARE_HASHTAG = " #SunshineApp";
     private static final String LOG_TAG = "DetailFragment";
+    public static final String DETAIL_URI = "URI";
     private int test = 23_34;
     private static final int DETAIL_LOADER = 0;
     private String mForecastStr;
@@ -78,6 +79,7 @@ public class DetailFragment extends Fragment implements LoaderManager.LoaderCall
 
 
     private ShareActionProvider mShareActionProvider;
+    private Uri mUri;
 
     public DetailFragment() {
         setHasOptionsMenu(true);
@@ -86,6 +88,11 @@ public class DetailFragment extends Fragment implements LoaderManager.LoaderCall
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+        Bundle arguments = getArguments();
+        if (arguments != null) {
+            mUri = arguments.getParcelable(DetailFragment.DETAIL_URI);
+        }
+
         View rootView = inflater.inflate(R.layout.fragment_detail, container, false);
         mIconView = (ImageView) rootView.findViewById(R.id.detail_icon);
         mDateView = (TextView) rootView.findViewById(R.id.detail_date_textview);
@@ -130,18 +137,20 @@ public class DetailFragment extends Fragment implements LoaderManager.LoaderCall
 
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-
-        Intent intent = getActivity().getIntent();
-        if (intent == null) {
-            return null;
+        Log.v(LOG_TAG, "in onCrateLoader");
+        if ( null != mUri ) {
+            // Now create and return a CursorLoader that will take care of
+            // creating a Cursor for the data being displayed.
+            return new CursorLoader(
+                    getActivity(),
+                    mUri,
+                    DETAIL_COLUMNS,
+                    null,
+                    null,
+                    null
+            );
         }
-
-        return new CursorLoader(getActivity(),
-                intent.getData(),
-                DETAIL_COLUMNS,
-                null,
-                null,
-                null);
+        return null;
     }
 
     @Override
@@ -201,5 +210,16 @@ public class DetailFragment extends Fragment implements LoaderManager.LoaderCall
     @Override
     public void onLoaderReset(Loader<Cursor> loader) {
 
+    }
+
+    public void onLocationChanged(String location) {
+        // replace the uri, since the location has changed
+        Uri uri = mUri;
+        if (null != uri) {
+            long date = WeatherContract.WeatherEntry.getDateFromUri(uri);
+            Uri updatedUri = WeatherContract.WeatherEntry.buildWeatherLocationWithDate(location, date);
+            mUri = updatedUri;
+            getLoaderManager().restartLoader(DETAIL_LOADER, null, this);
+        }
     }
 }
