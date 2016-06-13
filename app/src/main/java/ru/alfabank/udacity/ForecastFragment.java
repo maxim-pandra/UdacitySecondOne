@@ -19,8 +19,8 @@ import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import ru.alfabank.udacity.data.FetchWeatherTask;
 import ru.alfabank.udacity.data.WeatherContract;
+import ru.alfabank.udacity.sync.SunshineSyncAdapter;
 
 
 /**
@@ -62,8 +62,12 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
             WeatherContract.LocationEntry.COLUMN_COORD_LAT,
             WeatherContract.LocationEntry.COLUMN_COORD_LONG
     };
+    private static final String EXTRA_POSITION = "extra_position";
     private OnFragmentInteractionListener mListener;
     private ForecastAdapter forecastAdapter;
+    private int mPosition;
+    private ListView list;
+    private boolean mUseTodayLayout;
 
     public ForecastFragment() {
         // Required empty public constructor
@@ -97,16 +101,19 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-
+        if (savedInstanceState != null && savedInstanceState.containsKey(EXTRA_POSITION)) {
+            mPosition = savedInstanceState.getInt(EXTRA_POSITION);
+        }
         forecastAdapter = new ForecastAdapter(getActivity(), null, 0);
         View rootView = inflater.inflate(R.layout.fragment_blank, container, false);
-        ListView list = (ListView) rootView.findViewById(R.id.listview_forecast);
+        list = (ListView) rootView.findViewById(R.id.listview_forecast);
         list.setAdapter(forecastAdapter);
         list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView adapterView, View view, int position, long l) {
                 // CursorAdapter returns a cursor at the correct position for getItem(), or null
                 // if it cannot seek to that position.
+                mPosition = position;
                 Cursor cursor = (Cursor) adapterView.getItemAtPosition(position);
                 if (cursor != null) {
                     String locationSetting = Utility.getPreferredLocation(getActivity());
@@ -115,6 +122,7 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
                 }
             }
         });
+        forecastAdapter.setUseTodayLayout(mUseTodayLayout);
         return rootView;
     }
 
@@ -146,9 +154,17 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     }
 
     private void refreshForecast() {
-        FetchWeatherTask task = new FetchWeatherTask(getActivity());
-        String locationFromPreferences = Utility.getPreferredLocation(getActivity());
-        task.execute(locationFromPreferences);
+//        Intent alarmIntent = new Intent(getActivity(), SunshineService.AlarmReceiver.class);
+//        alarmIntent.putExtra(SunshineService.LOCATION_QUERY_EXTRA, Utility.getPreferredLocation(getActivity()));
+//
+//        //Wrap in a pending intent which only fires once.
+//        PendingIntent pi = PendingIntent.getBroadcast(getActivity(), 0,alarmIntent,PendingIntent.FLAG_ONE_SHOT);//getBroadcast(context, 0, i, 0);
+//
+//        AlarmManager am=(AlarmManager)getActivity().getSystemService(Context.ALARM_SERVICE);
+//
+//        //Set the AlarmManager to wake up the system.
+//        am.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 5000, pi);
+        SunshineSyncAdapter.syncImmediately(getActivity());
     }
 
     @Override
@@ -186,8 +202,17 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     }
 
     @Override
+    public void onSaveInstanceState(Bundle outState) {
+        if (mPosition != ListView.INVALID_POSITION) {
+            outState.putInt(EXTRA_POSITION, mPosition);
+        }
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
         forecastAdapter.swapCursor(data);
+        list.smoothScrollToPosition(mPosition);
     }
 
     @Override
@@ -195,6 +220,12 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
         forecastAdapter.swapCursor(null);
     }
 
+    public void setUseTodayLayout(boolean useTodayLayout) {
+        mUseTodayLayout = useTodayLayout;
+        if (forecastAdapter != null) {
+            forecastAdapter.setUseTodayLayout(mUseTodayLayout);
+        }
+    }
 
     public void onLocationChanged() {
         refreshForecast();
