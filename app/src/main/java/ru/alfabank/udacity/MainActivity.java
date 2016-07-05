@@ -88,23 +88,7 @@ public class MainActivity extends AppCompatActivity implements ForecastFragment.
             return true;
         }
 
-        if (id == R.id.action_view_location) {
-            openPreferedLocationOnMap();
-            return true;
-        }
-
         return super.onOptionsItemSelected(item);
-    }
-
-    private void openPreferedLocationOnMap() {
-        String prefLocation = Utility.getPreferredLocation(this);
-        Uri geoLocation = Uri.parse("geo:0,0?").buildUpon()
-                .appendQueryParameter("q", prefLocation)
-                .build();
-        Intent showGeoIntent = new Intent(Intent.ACTION_VIEW, geoLocation);
-        if (showGeoIntent.resolveActivity(getPackageManager()) != null) {
-            startActivity(showGeoIntent);
-        }
     }
 
     @Override

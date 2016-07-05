@@ -1,6 +1,7 @@
 package ru.alfabank.udacity;
 
 import android.content.Context;
+import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -9,6 +10,7 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -17,7 +19,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
-import android.widget.Toast;
 
 import ru.alfabank.udacity.data.WeatherContract;
 import ru.alfabank.udacity.sync.SunshineSyncAdapter;
@@ -63,6 +64,7 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
             WeatherContract.LocationEntry.COLUMN_COORD_LONG
     };
     private static final String EXTRA_POSITION = "extra_position";
+    private static final String TAG = "ForecastFragment";
     private OnFragmentInteractionListener mListener;
     private ForecastAdapter forecastAdapter;
     private int mPosition;
@@ -145,25 +147,40 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-        if (id == R.id.action_refresh) {
-            Toast.makeText(getActivity(), "refresh", Toast.LENGTH_SHORT).show();
-            refreshForecast();
+        if (id == R.id.action_view_location) {
+            openPreferedLocationOnMap();
             return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
+
+    private void openPreferedLocationOnMap() {
+        // Using the URI scheme for showing a location found on a map.  This super-handy
+        // intent can is detailed in the "Common Intents" page of Android's developer site:
+        // http://developer.android.com/guide/components/intents-common.html#Maps
+        if ( null != forecastAdapter ) {
+            Cursor c = forecastAdapter.getCursor();
+            if ( null != c ) {
+                c.moveToPosition(0);
+                String posLat = c.getString(COL_COORD_LAT);
+                String posLong = c.getString(COL_COORD_LONG);
+                Uri geoLocation = Uri.parse("geo:" + posLat + "," + posLong);
+
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.setData(geoLocation);
+
+                if (intent.resolveActivity(getActivity().getPackageManager()) != null) {
+                    startActivity(intent);
+                } else {
+                    Log.d(TAG, "Couldn't call " + geoLocation.toString() + ", no receiving apps installed!");
+                }
+            }
+
+        }
+    }
+
     private void refreshForecast() {
-//        Intent alarmIntent = new Intent(getActivity(), SunshineService.AlarmReceiver.class);
-//        alarmIntent.putExtra(SunshineService.LOCATION_QUERY_EXTRA, Utility.getPreferredLocation(getActivity()));
-//
-//        //Wrap in a pending intent which only fires once.
-//        PendingIntent pi = PendingIntent.getBroadcast(getActivity(), 0,alarmIntent,PendingIntent.FLAG_ONE_SHOT);//getBroadcast(context, 0, i, 0);
-//
-//        AlarmManager am=(AlarmManager)getActivity().getSystemService(Context.ALARM_SERVICE);
-//
-//        //Set the AlarmManager to wake up the system.
-//        am.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 5000, pi);
         SunshineSyncAdapter.syncImmediately(getActivity());
     }
 
